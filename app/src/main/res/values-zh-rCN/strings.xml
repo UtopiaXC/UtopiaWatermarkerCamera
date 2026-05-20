@@ -1,0 +1,66 @@
+<resources>
+    <string name="app_name">Utopia 相机</string>
+    <string name="permission_rationale">使用全部功能必须授予相机、位置以及文件存储权限，用于读取传感器和写入水印图片，请授权以继续。</string>
+    <string name="grant_permissions">授予权限</string>
+    <string name="open_settings">前往设置</string>
+    
+    <string name="photo_gallery">相册</string>
+    <string name="shutter">快门</string>
+    <string name="switch_lens">切换镜头</string>
+    <string name="zoom_ratio">%.1fx</string>
+    <string name="filter_style">滤镜</string>
+    <string name="settings">设置</string>
+
+    <!-- Filter Names -->
+    <string name="filter_none">原图</string>
+    <string name="filter_bw">黑白</string>
+    <string name="filter_vintage">仿古</string>
+    <string name="filter_cool">冷色</string>
+    <string name="filter_vivid">鲜艳</string>
+
+    <!-- Camera Settings -->
+    <string name="camera_settings">拍摄设置</string>
+    <string name="photo_ratio">照片比例</string>
+    <string name="ratio_4_3">4:3</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_1_1">1:1</string>
+    <string name="ratio_full">全屏</string>
+    <string name="photo_resolution">照片分辨率</string>
+    <string name="resolution_highest">最高</string>
+    <string name="resolution_high">高</string>
+    <string name="resolution_medium">中</string>
+    <string name="grid_lines">辅助线</string>
+    <string name="grid_off">关闭</string>
+    <string name="grid_thirds">九宫格</string>
+    <string name="grid_golden">黄金分割</string>
+    <string name="horizon_leveler">水平仪</string>
+    <string name="shake_to_capture">摇晃倒计时拍摄（3秒）</string>
+
+    <!-- Watermark Settings -->
+    <string name="watermark_settings">水印设置</string>
+    <string name="enable_watermark">启用水印</string>
+    <string name="show_location">定位与坐标</string>
+    <string name="show_location_desc">GPS坐标及地名</string>
+    <string name="show_altitude">海拔高度</string>
+    <string name="show_altitude_desc">由气压传感器推算</string>
+    <string name="show_pressure">大气压</string>
+    <string name="show_pressure_desc">原始大气压值（hPa）</string>
+    <string name="show_direction">拍摄方位</string>
+    <string name="show_direction_desc">拍摄时面向方位（指南针）</string>
+    <string name="show_device_info">品牌与机型</string>
+    <string name="show_device_info_desc">品牌Logo及设备型号</string>
+    <string name="show_camera_info">相机参数</string>
+    <string name="show_camera_info_desc">焦段、快门速度、光圈、ISO</string>
+    <string name="watermark_position">水印位置</string>
+    <string name="position_bottom">底部</string>
+    <string name="position_top">顶部</string>
+    <string name="position_left">左侧</string>
+    <string name="position_right">右侧</string>
+    <string name="watermark_color">水印底色</string>
+    <string name="color_light">亮色</string>
+    <string name="color_dark">暗色</string>
+
+    <!-- About -->
+    <string name="about">关于</string>
+    <string name="version">版本</string>
+</resources>

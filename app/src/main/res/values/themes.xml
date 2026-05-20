@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.UtopiaWatermarkCamera" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

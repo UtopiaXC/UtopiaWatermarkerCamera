@@ -1,0 +1,66 @@
+<resources>
+    <string name="app_name">Utopia Watermark Camera</string>
+    <string name="permission_rationale">Camera, location, and storage permissions are required to provide full watermark metadata. Please grant them to continue.</string>
+    <string name="grant_permissions">Grant Permissions</string>
+    <string name="open_settings">Open Settings</string>
+    
+    <string name="photo_gallery">Gallery</string>
+    <string name="shutter">Shutter</string>
+    <string name="switch_lens">Switch Lens</string>
+    <string name="zoom_ratio">%.1fx</string>
+    <string name="filter_style">Filter</string>
+    <string name="settings">Settings</string>
+
+    <!-- Filter Names -->
+    <string name="filter_none">Original</string>
+    <string name="filter_bw">B&amp;W</string>
+    <string name="filter_vintage">Vintage</string>
+    <string name="filter_cool">Cool</string>
+    <string name="filter_vivid">Vivid</string>
+
+    <!-- Camera Settings -->
+    <string name="camera_settings">Camera</string>
+    <string name="photo_ratio">Photo Ratio</string>
+    <string name="ratio_4_3">4:3</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_1_1">1:1</string>
+    <string name="ratio_full">Full</string>
+    <string name="photo_resolution">Photo Resolution</string>
+    <string name="resolution_highest">Highest</string>
+    <string name="resolution_high">High</string>
+    <string name="resolution_medium">Medium</string>
+    <string name="grid_lines">Grid Lines</string>
+    <string name="grid_off">Off</string>
+    <string name="grid_thirds">Rule of Thirds</string>
+    <string name="grid_golden">Golden Ratio</string>
+    <string name="horizon_leveler">Horizon Leveler</string>
+    <string name="shake_to_capture">Shake to Capture (3s Timer)</string>
+
+    <!-- Watermark Settings -->
+    <string name="watermark_settings">Watermark</string>
+    <string name="enable_watermark">Enable Watermark</string>
+    <string name="show_location">Location &amp; Coordinates</string>
+    <string name="show_location_desc">GPS coordinates and place name</string>
+    <string name="show_altitude">Altitude</string>
+    <string name="show_altitude_desc">Barometric altitude (from pressure sensor)</string>
+    <string name="show_pressure">Barometric Pressure</string>
+    <string name="show_pressure_desc">Raw atmospheric pressure (hPa)</string>
+    <string name="show_direction">Compass Direction</string>
+    <string name="show_direction_desc">Facing direction when capturing</string>
+    <string name="show_device_info">Device Brand &amp; Model</string>
+    <string name="show_device_info_desc">Brand logo and device model name</string>
+    <string name="show_camera_info">Camera EXIF Info</string>
+    <string name="show_camera_info_desc">Focal length, shutter speed, aperture, ISO</string>
+    <string name="watermark_position">Watermark Position</string>
+    <string name="position_bottom">Bottom</string>
+    <string name="position_top">Top</string>
+    <string name="position_left">Left</string>
+    <string name="position_right">Right</string>
+    <string name="watermark_color">Watermark Theme</string>
+    <string name="color_light">Light</string>
+    <string name="color_dark">Dark</string>
+
+    <!-- About -->
+    <string name="about">About</string>
+    <string name="version">Version</string>
+</resources>

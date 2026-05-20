@@ -1,0 +1,66 @@
+<resources>
+    <string name="app_name">Utopia カメラ</string>
+    <string name="permission_rationale">ウォーターマークを使用するためには、カメラ、位置情報、およびストレージの権限が必要です。続行するには権限を許可してください。</string>
+    <string name="grant_permissions">権限を許可</string>
+    <string name="open_settings">設定を開く</string>
+    
+    <string name="photo_gallery">ギャラリー</string>
+    <string name="shutter">シャッター</string>
+    <string name="switch_lens">レンズ切替</string>
+    <string name="zoom_ratio">%.1fx</string>
+    <string name="filter_style">フィルター</string>
+    <string name="settings">設定</string>
+
+    <!-- Filter Names -->
+    <string name="filter_none">オリジナル</string>
+    <string name="filter_bw">モノクロ</string>
+    <string name="filter_vintage">ヴィンテージ</string>
+    <string name="filter_cool">クール</string>
+    <string name="filter_vivid">ビビッド</string>
+
+    <!-- Camera Settings -->
+    <string name="camera_settings">カメラ</string>
+    <string name="photo_ratio">写真比率</string>
+    <string name="ratio_4_3">4:3</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_1_1">1:1</string>
+    <string name="ratio_full">フル</string>
+    <string name="photo_resolution">写真解像度</string>
+    <string name="resolution_highest">最高</string>
+    <string name="resolution_high">高</string>
+    <string name="resolution_medium">中</string>
+    <string name="grid_lines">グリッド線</string>
+    <string name="grid_off">オフ</string>
+    <string name="grid_thirds">三分割法</string>
+    <string name="grid_golden">黄金比</string>
+    <string name="horizon_leveler">水準器</string>
+    <string name="shake_to_capture">シェイクして撮影（3秒タイマー）</string>
+
+    <!-- Watermark Settings -->
+    <string name="watermark_settings">ウォーターマーク</string>
+    <string name="enable_watermark">ウォーターマークを有効にする</string>
+    <string name="show_location">位置情報と座標</string>
+    <string name="show_location_desc">GPS座標と地名を表示</string>
+    <string name="show_altitude">標高</string>
+    <string name="show_altitude_desc">気圧センサーによる標高</string>
+    <string name="show_pressure">気圧</string>
+    <string name="show_pressure_desc">大気圧（hPa）</string>
+    <string name="show_direction">撮影方向</string>
+    <string name="show_direction_desc">撮影時の向き（コンパス）</string>
+    <string name="show_device_info">デバイスのブランドとモデル</string>
+    <string name="show_device_info_desc">ブランドロゴとデバイスモデル名</string>
+    <string name="show_camera_info">カメラ情報</string>
+    <string name="show_camera_info_desc">焦点距離、シャッター速度、絞り、ISO</string>
+    <string name="watermark_position">ウォーターマークの位置</string>
+    <string name="position_bottom">下</string>
+    <string name="position_top">上</string>
+    <string name="position_left">左</string>
+    <string name="position_right">右</string>
+    <string name="watermark_color">ウォーターマークのテーマ</string>
+    <string name="color_light">ライト</string>
+    <string name="color_dark">ダーク</string>
+
+    <!-- About -->
+    <string name="about">について</string>
+    <string name="version">バージョン</string>
+</resources>
