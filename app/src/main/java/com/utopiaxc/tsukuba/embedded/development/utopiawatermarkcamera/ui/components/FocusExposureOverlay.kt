@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -20,11 +21,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 /**
  * iPhone-style focus square with exposure compensation slider.
  * Shows a yellow square at the focus point with a sun icon slider on the right.
+ * 
+ * The exposure slider consumes pointer events so dragging it does NOT re-trigger focus.
  */
 @Composable
 fun FocusExposureOverlay(
@@ -37,6 +43,7 @@ fun FocusExposureOverlay(
     if (focusPoint == null) return
 
     val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
 
     // Animation for the focus square
     val scale = remember { Animatable(1.6f) }
@@ -50,12 +57,11 @@ fun FocusExposureOverlay(
         scale.animateTo(1f, animationSpec = tween(200, easing = FastOutSlowInEasing))
     }
 
-    // Auto-hide after 3 seconds of no interaction
-    LaunchedEffect(focusPoint, isInteracting) {
+    // Auto-hide focus square after 3 seconds of no interaction, but keep slider active
+    LaunchedEffect(focusPoint, isInteracting, exposureCompensation) {
         if (!isInteracting) {
             delay(3000)
             alpha.animateTo(0f, animationSpec = tween(300))
-            onDismiss()
         }
     }
 
@@ -101,74 +107,83 @@ fun FocusExposureOverlay(
         }
 
         // Exposure compensation slider (right side of focus square)
-        if (alpha.value > 0.3f) {
-            val sliderHeight = 160.dp
-            val sliderX = xDp + halfSquare + 16.dp
-            val sliderY = yDp - sliderHeight / 2
+        val sliderHeight = 200.dp
+        val sliderWidth = 48.dp
+        val sliderX = xDp + halfSquare + 16.dp
+        val sliderY = yDp - sliderHeight / 2
+        val sliderAlpha = maxOf(alpha.value, 0.4f) // Keep track faintly visible
 
-            Column(
+        Column(
+            modifier = Modifier
+                .offset(x = sliderX, y = sliderY)
+                .width(sliderWidth)
+                .height(sliderHeight),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Sun icon at top
+            Text(
+                text = "☀",
+                fontSize = 16.sp,
+                color = Color(0xFFFFCC00).copy(alpha = sliderAlpha)
+            )
+
+            // Vertical slider track
+            Box(
                 modifier = Modifier
-                    .offset(x = sliderX, y = sliderY)
-                    .width(36.dp)
-                    .height(sliderHeight),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Sun icon at top
-                Text(
-                    text = "☀",
-                    fontSize = 16.sp,
-                    color = Color(0xFFFFCC00).copy(alpha = alpha.value)
-                )
-
-                // Vertical slider track
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .weight(1f)
-                        .padding(vertical = 4.dp)
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragStart = { isInteracting = true },
-                                onDragEnd = { isInteracting = false },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    val range = exposureRange.endInclusive - exposureRange.start
-                                    val delta = -(dragAmount.y / size.height.toFloat()) * range
-                                    val newVal = (exposureCompensation + delta).coerceIn(exposureRange)
-                                    onExposureChange(newVal)
+                    .width(sliderWidth)
+                    .weight(1f)
+                    .padding(vertical = 4.dp)
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { isInteracting = true },
+                            onDragEnd = { isInteracting = false },
+                            onDragCancel = { isInteracting = false },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                val range = exposureRange.endInclusive - exposureRange.start
+                                // 1.5x sensitivity
+                                val delta = -(dragAmount.y / size.height.toFloat()) * range * 1.5f
+                                val newVal = (exposureCompensation + delta).coerceIn(exposureRange)
+                                
+                                val oldSteps = (exposureCompensation / 0.5f).roundToInt()
+                                val newSteps = (newVal / 0.5f).roundToInt()
+                                if (oldSteps != newSteps) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 }
-                            )
-                        }
-                ) {
-                    // Track background
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawLine(
-                            Color(0xFFFFCC00).copy(alpha = alpha.value * 0.4f),
-                            Offset(size.width / 2, 0f),
-                            Offset(size.width / 2, size.height),
-                            strokeWidth = 2.dp.toPx()
-                        )
-                        // Current position indicator
-                        val range = exposureRange.endInclusive - exposureRange.start
-                        val normalized = if (range > 0) {
-                            1f - (exposureCompensation - exposureRange.start) / range
-                        } else 0.5f
-                        val y = size.height * normalized
-                        drawCircle(
-                            Color(0xFFFFCC00).copy(alpha = alpha.value),
-                            radius = 6.dp.toPx(),
-                            center = Offset(size.width / 2, y)
+                                
+                                onExposureChange(newVal)
+                            }
                         )
                     }
+            ) {
+                // Track background
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawLine(
+                        Color(0xFFFFCC00).copy(alpha = sliderAlpha * 0.4f),
+                        Offset(size.width / 2, 0f),
+                        Offset(size.width / 2, size.height),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                    // Current position indicator
+                    val range = exposureRange.endInclusive - exposureRange.start
+                    val normalized = if (range > 0) {
+                        1f - (exposureCompensation - exposureRange.start) / range
+                    } else 0.5f
+                    val y = size.height * normalized
+                    drawCircle(
+                        Color(0xFFFFCC00).copy(alpha = sliderAlpha),
+                        radius = 8.dp.toPx(),
+                        center = Offset(size.width / 2, y)
+                    )
                 }
-
-                // Moon icon at bottom
-                Text(
-                    text = "☾",
-                    fontSize = 14.sp,
-                    color = Color(0xFFFFCC00).copy(alpha = alpha.value * 0.6f)
-                )
             }
+
+            // Moon icon at bottom
+            Text(
+                text = "☾",
+                fontSize = 14.sp,
+                color = Color(0xFFFFCC00).copy(alpha = sliderAlpha * 0.6f)
+            )
         }
     }
 }

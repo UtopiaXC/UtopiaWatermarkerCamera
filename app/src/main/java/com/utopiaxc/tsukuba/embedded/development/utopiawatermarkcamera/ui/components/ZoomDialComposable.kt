@@ -25,19 +25,17 @@ import kotlin.math.roundToInt
 /**
  * iPhone-style zoom control with preset buttons and a horizontal scroll dial.
  * 
- * Preset buttons: .5x, 1x, 2x (or available presets based on min/max zoom)
- * Dial: horizontal scrollable ruler for fine-grained zoom (0.1x step)
+ * @param presets List of zoom preset values to display as quick-select buttons.
+ *               These should be derived from actual device lens focal lengths.
  */
 @Composable
 fun ZoomDialControl(
     currentZoom: Float,
     minZoom: Float,
     maxZoom: Float,
+    presets: List<Float>,
     onZoomChange: (Float) -> Unit
 ) {
-    val presets = buildPresetList(minZoom, maxZoom)
-    val density = LocalDensity.current
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -130,25 +128,46 @@ private fun ZoomDial(
     maxZoom: Float,
     onZoomChange: (Float) -> Unit
 ) {
-    val density = LocalDensity.current
     val dialWidthDp = 240.dp
     val dialHeightDp = 32.dp
+
+    // Use rememberUpdatedState to always have the latest zoom value in the drag handler
+    val currentZoomState by rememberUpdatedState(currentZoom)
+    
+    // Track drag state: when dragging, we use the start value + accumulated delta
+    var isDragging by remember { mutableStateOf(false) }
+    var dragStartZoom by remember { mutableFloatStateOf(currentZoom) }
+    var accumulatedDragPx by remember { mutableFloatStateOf(0f) }
 
     Box(
         modifier = Modifier
             .width(dialWidthDp)
             .height(dialHeightDp)
             .pointerInput(minZoom, maxZoom) {
-                detectHorizontalDragGestures { change, dragAmount ->
-                    change.consume()
-                    val range = maxZoom - minZoom
-                    val pxPerUnit = size.width.toFloat() / range
-                    val delta = -dragAmount / pxPerUnit
-                    val newZoom = (currentZoom + delta).coerceIn(minZoom, maxZoom)
-                    // Round to 0.1 step
-                    val rounded = (newZoom * 10).roundToInt() / 10f
-                    onZoomChange(rounded.coerceIn(minZoom, maxZoom))
-                }
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        isDragging = true
+                        dragStartZoom = currentZoomState
+                        accumulatedDragPx = 0f
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        accumulatedDragPx += dragAmount
+                        val range = maxZoom - minZoom
+                        val pxPerUnit = size.width.toFloat() / range
+                        val zoomDelta = -accumulatedDragPx / pxPerUnit
+                        val newZoom = (dragStartZoom + zoomDelta).coerceIn(minZoom, maxZoom)
+                        // Round to 0.1 step
+                        val rounded = (newZoom * 10).roundToInt() / 10f
+                        onZoomChange(rounded.coerceIn(minZoom, maxZoom))
+                    }
+                )
             },
         contentAlignment = Alignment.Center
     ) {
@@ -200,13 +219,6 @@ private fun ZoomDial(
                 cap = StrokeCap.Round
             )
         }
-    }
-}
-
-private fun buildPresetList(minZoom: Float, maxZoom: Float): List<Float> {
-    val candidates = listOf(0.5f, 1f, 2f, 5f, 10f)
-    return candidates.filter { it in minZoom..maxZoom }.let { filtered ->
-        if (filtered.isEmpty()) listOf(minZoom) else filtered
     }
 }
 

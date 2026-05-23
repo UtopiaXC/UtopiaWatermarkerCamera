@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -33,6 +34,12 @@ class SettingsRepository(private val context: Context) {
         val HORIZON_LEVELER = booleanPreferencesKey("horizon_leveler")
         val SHAKE_TO_CAPTURE = booleanPreferencesKey("shake_to_capture")
         val FILTER_MODE = intPreferencesKey("filter_mode") // 0: None, 1: B&W, 2: Vintage, 3: Cool, 4: Vivid
+
+        // Author
+        val AUTHOR_NAME = stringPreferencesKey("author_name")
+
+        // App System Settings
+        val APP_LANGUAGE = intPreferencesKey("app_language") // 0: System, 1: zh-CN, 2: zh-TW, 3: en, 4: ja
     }
 
     // Watermark flows
@@ -53,6 +60,8 @@ class SettingsRepository(private val context: Context) {
     val horizonLevelerFlow: Flow<Boolean> = context.dataStore.data.map { it[HORIZON_LEVELER] ?: false }
     val shakeToCaptureFlow: Flow<Boolean> = context.dataStore.data.map { it[SHAKE_TO_CAPTURE] ?: false }
     val filterModeFlow: Flow<Int> = context.dataStore.data.map { it[FILTER_MODE] ?: 0 }
+    val authorNameFlow: Flow<String> = context.dataStore.data.map { it[AUTHOR_NAME] ?: "" }
+    val appLanguageFlow: Flow<Int> = context.dataStore.data.map { it[APP_LANGUAGE] ?: 0 }
 
     suspend fun updateBooleanSetting(key: Preferences.Key<Boolean>, value: Boolean) {
         context.dataStore.edit { preferences ->
@@ -61,6 +70,12 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun updateIntSetting(key: Preferences.Key<Int>, value: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[key] = value
+        }
+    }
+
+    suspend fun updateStringSetting(key: Preferences.Key<String>, value: String) {
         context.dataStore.edit { preferences ->
             preferences[key] = value
         }

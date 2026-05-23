@@ -59,8 +59,54 @@
     <string name="watermark_color">水印底色</string>
     <string name="color_light">亮色</string>
     <string name="color_dark">暗色</string>
+    <string name="author_name">作者名称</string>
+    <string name="author_name_hint">请输入您的名字</string>
+    <string name="author_name_desc">水印上将显示"Shot by ©名字"</string>
 
     <!-- About -->
     <string name="about">关于</string>
     <string name="version">版本</string>
+    <string name="about_developer">由UtopiaXC开发</string>
+    <string name="about_course">用于筑波大学嵌入式开发课程Android作业</string>
+    <string name="about_github">在 GitHub 上查看</string>
+    <string name="about_dialog_title">关于本应用</string>
+
+    <!-- Gallery -->
+    <string name="gallery_title">照片</string>
+    <string name="gallery_empty">暂无照片</string>
+    <string name="gallery_empty_desc">使用 Utopia 水印相机拍摄的照片将在这里显示</string>
+    <string name="delete_photo">删除</string>
+    <string name="delete_photo_confirm">确定要删除这张照片吗？</string>
+    <string name="delete_photo_confirm_title">删除照片</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确认</string>
+    <string name="photo_deleted">照片已删除</string>
+    <string name="photo_count">%d 张照片</string>
+
+    <!-- Watermark Labels -->
+    <string name="watermark_shot_by">Shot by ©%s</string>
+    <string name="watermark_powered_by">Powered by Utopia Watermark Camera</string>
+    <string name="watermark_alt">海拔: %sm</string>
+    <string name="watermark_alt_dual">海拔： %1$sm (气压) %2$sm (GPS)</string>
+    <string name="watermark_pressure">%s hPa</string>
+    <string name="watermark_direction_n">北</string>
+    <string name="watermark_direction_ne">东北</string>
+    <string name="watermark_direction_e">东</string>
+    <string name="watermark_direction_se">东南</string>
+    <string name="watermark_direction_s">南</string>
+    <string name="watermark_direction_sw">西南</string>
+    <string name="watermark_direction_w">西</string>
+    <string name="watermark_direction_nw">西北</string>
+
+    <!-- Misc -->
+    <string name="save">保存</string>
+    <string name="not_set">未设置</string>
+
+    <!-- Batch Selection -->
+    <string name="select_all">全选</string>
+    <string name="deselect_all">取消全选</string>
+    <string name="selected_count">已选择 %d 项</string>
+    <string name="batch_delete_confirm">确定要删除这 %d 张照片吗？</string>
+    <string name="batch_delete_confirm_title">删除照片</string>
+    <string name="photos_deleted">已删除 %d 张照片</string>
 </resources>

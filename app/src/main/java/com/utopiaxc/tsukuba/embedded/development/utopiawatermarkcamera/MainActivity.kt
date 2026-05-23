@@ -8,6 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -15,6 +21,7 @@ import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.data.Sett
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.sensors.LocationTracker
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.sensors.SensorReader
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.CameraScreen
+import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.GalleryScreen
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.PermissionScreen
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.SettingsScreen
 
@@ -33,11 +40,37 @@ class MainActivity : ComponentActivity() {
         settingsRepository = SettingsRepository(this)
         
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    val navController = rememberNavController()
+            val appLanguage by settingsRepository.appLanguageFlow.collectAsState(initial = 0)
+            
+            val locale = when (appLanguage) {
+                1 -> java.util.Locale("zh", "CN")
+                2 -> java.util.Locale("zh", "TW")
+                3 -> java.util.Locale("en")
+                4 -> java.util.Locale("ja")
+                else -> java.util.Locale.getDefault()
+            }
+            
+            val configuration = LocalConfiguration.current
+            configuration.setLocale(locale)
+            
+            val activityContext = LocalContext.current
+            val context = remember(activityContext, locale) {
+                object : android.content.ContextWrapper(activityContext) {
+                    override fun getResources(): android.content.res.Resources {
+                        return activityContext.createConfigurationContext(configuration).resources
+                    }
+                }
+            }
+            
+            CompositionLocalProvider(
+                LocalContext provides context,
+                LocalConfiguration provides configuration
+            ) {
+                MaterialTheme {
+                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "permissions") {
+                        NavHost(navController = navController, startDestination = "permissions") {
                         composable("permissions") {
                             PermissionScreen(
                                 onPermissionsGranted = {
@@ -50,6 +83,7 @@ class MainActivity : ComponentActivity() {
                         composable("camera") {
                             CameraScreen(
                                 onNavigateToSettings = { navController.navigate("settings") },
+                                onNavigateToGallery = { navController.navigate("gallery") },
                                 sensorReader = sensorReader,
                                 locationTracker = locationTracker,
                                 settingsRepository = settingsRepository
@@ -61,11 +95,17 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() }
                             )
                         }
+                        composable("gallery") {
+                            GalleryScreen(
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
 
     override fun onResume() {
         super.onResume()

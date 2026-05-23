@@ -1,6 +1,5 @@
 package com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -18,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * iOS-style settings group container with rounded corners.
+ * MD3-style settings group container with rounded corners.
  */
 @Composable
 fun SettingsGroup(
@@ -39,9 +37,9 @@ fun SettingsGroup(
         }
 
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 0.dp
+            tonalElevation = 1.dp
         ) {
             Column {
                 content()
@@ -51,7 +49,7 @@ fun SettingsGroup(
 }
 
 /**
- * iOS-style switch setting item.
+ * MD3-style switch setting item using ListItem pattern.
  */
 @Composable
 fun SettingsSwitchItem(
@@ -65,59 +63,51 @@ fun SettingsSwitchItem(
     enabled: Boolean = true
 ) {
     Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = if (subtitle != null) 10.dp else 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (icon != null) {
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(iconTint),
-                    contentAlignment = Alignment.Center
-                ) {
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface
+                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            },
+            supportingContent = if (subtitle != null) {
+                {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = if (enabled) 0.7f else 0.38f
+                        )
+                    )
+                }
+            } else null,
+            leadingContent = if (icon != null) {
+                {
                     Icon(
                         icon,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                        tint = if (enabled) iconTint else iconTint.copy(alpha = 0.38f),
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(14.dp))
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 16.sp,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurface
-                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            } else null,
+            trailingContent = {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = if (enabled) onCheckedChange else null,
+                    enabled = enabled
                 )
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                            alpha = if (enabled) 0.7f else 0.3f
-                        ),
-                        lineHeight = 16.sp
-                    )
-                }
-            }
-
-            Switch(
-                checked = checked,
-                onCheckedChange = if (enabled) onCheckedChange else null,
-                enabled = enabled
+            },
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent
             )
-        }
+        )
 
         if (showDivider) {
             HorizontalDivider(
-                modifier = Modifier.padding(start = if (icon != null) 60.dp else 16.dp),
+                modifier = Modifier.padding(start = if (icon != null) 56.dp else 16.dp),
                 thickness = 0.5.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
             )
@@ -126,7 +116,7 @@ fun SettingsSwitchItem(
 }
 
 /**
- * iOS-style navigation/selection setting item with current value and arrow.
+ * MD3-style navigation/selection setting item with current value and arrow.
  */
 @Composable
 fun SettingsNavigationItem(
@@ -139,61 +129,164 @@ fun SettingsNavigationItem(
     enabled: Boolean = true
 ) {
     Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled, onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (icon != null) {
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(iconTint),
-                    contentAlignment = Alignment.Center
-                ) {
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface
+                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            },
+            leadingContent = if (icon != null) {
+                {
                     Icon(
                         icon,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                        tint = if (enabled) iconTint else iconTint.copy(alpha = 0.38f),
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(14.dp))
-            }
-
-            Text(
-                text = title,
-                fontSize = 16.sp,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface
-                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                modifier = Modifier.weight(1f)
+            } else null,
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = currentValue,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = if (enabled) 0.7f else 0.38f
+                        )
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            },
+            modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent
             )
-
-            Text(
-                text = currentValue,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (enabled) 0.6f else 0.3f
-                )
-            )
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
+        )
 
         if (showDivider) {
             HorizontalDivider(
-                modifier = Modifier.padding(start = if (icon != null) 60.dp else 16.dp),
+                modifier = Modifier.padding(start = if (icon != null) 56.dp else 16.dp),
                 thickness = 0.5.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
             )
         }
+    }
+}
+
+/**
+ * MD3-style text input setting item for entering string values.
+ */
+@Composable
+fun SettingsTextInputItem(
+    icon: ImageVector? = null,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    title: String,
+    subtitle: String? = null,
+    currentValue: String,
+    placeholder: String = "",
+    onValueChange: (String) -> Unit,
+    showDivider: Boolean = true
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var textValue by remember(currentValue) { mutableStateOf(currentValue) }
+
+    Column {
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            supportingContent = if (subtitle != null) {
+                {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            } else null,
+            leadingContent = if (icon != null) {
+                {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            } else null,
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = currentValue.ifBlank { placeholder },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (currentValue.isBlank())
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            },
+            modifier = Modifier.clickable { showDialog = true },
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent
+            )
+        )
+
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = if (icon != null) 56.dp else 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            )
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = {
+                Text(text = title, fontWeight = FontWeight.SemiBold)
+            },
+            text = {
+                OutlinedTextField(
+                    value = textValue,
+                    onValueChange = { textValue = it },
+                    placeholder = { Text(placeholder) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onValueChange(textValue)
+                    showDialog = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -239,7 +332,7 @@ fun SettingsSelectionDialog(
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = option,
-                            fontSize = 16.sp
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                     if (index < options.lastIndex) {

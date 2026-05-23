@@ -59,8 +59,53 @@
     <string name="watermark_color">浮水印底色</string>
     <string name="color_light">亮色</string>
     <string name="color_dark">暗色</string>
+    <string name="author_name">作者名稱</string>
+    <string name="author_name_hint">請輸入您的名字</string>
+    <string name="author_name_desc">浮水印上將顯示「Shot by ©名字」</string>
 
     <!-- About -->
     <string name="about">關於</string>
     <string name="version">版本</string>
+    <string name="about_developer">由 UtopiaXC 開發</string>
+    <string name="about_course">用於筑波大學嵌入式開發課程Android功课</string>
+    <string name="about_github">在 GitHub 上查看</string>
+    <string name="about_dialog_title">關於本應用</string>
+
+    <!-- Gallery -->
+    <string name="gallery_title">照片</string>
+    <string name="gallery_empty">暫無照片</string>
+    <string name="gallery_empty_desc">使用 Utopia 浮水印相機拍攝的照片將在這裡顯示</string>
+    <string name="delete_photo">刪除</string>
+    <string name="delete_photo_confirm">確定要刪除這張照片嗎？</string>
+    <string name="delete_photo_confirm_title">刪除照片</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">確認</string>
+    <string name="photo_deleted">照片已刪除</string>
+    <string name="photo_count">%d 張照片</string>
+
+    <!-- Watermark Labels -->
+    <string name="watermark_shot_by">Shot by ©%s</string>
+    <string name="watermark_powered_by">Powered by Utopia Watermark Camera</string>
+    <string name="watermark_alt">海拔: %sm</string>
+    <string name="watermark_pressure">%s hPa</string>
+    <string name="watermark_direction_n">北</string>
+    <string name="watermark_direction_ne">東北</string>
+    <string name="watermark_direction_e">東</string>
+    <string name="watermark_direction_se">東南</string>
+    <string name="watermark_direction_s">南</string>
+    <string name="watermark_direction_sw">西南</string>
+    <string name="watermark_direction_w">西</string>
+    <string name="watermark_direction_nw">西北</string>
+
+    <!-- Misc -->
+    <string name="save">儲存</string>
+    <string name="not_set">未設定</string>
+
+    <!-- Batch Selection -->
+    <string name="select_all">全選</string>
+    <string name="deselect_all">取消全選</string>
+    <string name="selected_count">已選擇 %d 項</string>
+    <string name="batch_delete_confirm">確定要刪除這 %d 張照片嗎？</string>
+    <string name="batch_delete_confirm_title">刪除照片</string>
+    <string name="photos_deleted">已刪除 %d 張照片</string>
 </resources>

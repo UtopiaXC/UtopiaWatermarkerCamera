@@ -1,18 +1,23 @@
 package com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui
 
+import android.content.ContentUris
 import android.content.Context
-import android.content.Intent
+import android.graphics.BitmapFactory
 import android.media.MediaActionSound
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,12 +34,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,13 +60,18 @@ import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.watermark
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import android.hardware.camera2.CameraCharacteristics
 import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
+import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.sensors.DeviceOrientation
+import android.view.Surface
 
 @Composable
 fun CameraScreen(
     onNavigateToSettings: () -> Unit,
+    onNavigateToGallery: () -> Unit,
     sensorReader: SensorReader,
     locationTracker: LocationTracker,
     settingsRepository: SettingsRepository
@@ -77,10 +89,14 @@ fun CameraScreen(
     
     var flashScreen by remember { mutableStateOf(false) }
     var countdown by remember { mutableIntStateOf(0) }
+    var isProcessing by remember { mutableStateOf(false) }
     
     var zoomRatio by remember { mutableFloatStateOf(1f) }
     var minZoomRatio by remember { mutableFloatStateOf(0.5f) }
     var maxZoomRatio by remember { mutableFloatStateOf(10f) }
+    
+    // Dynamic zoom presets based on device lenses
+    var zoomPresets by remember { mutableStateOf(listOf(1f)) }
     
     // Focus & exposure state
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
@@ -100,6 +116,15 @@ fun CameraScreen(
     val horizonLeveler by settingsRepository.horizonLevelerFlow.collectAsState(initial = false)
     val photoRatio by settingsRepository.photoRatioFlow.collectAsState(initial = 0)
 
+    // Gallery thumbnail
+    var lastPhotoThumbnail by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    
+    // Load last photo thumbnail on mount and after taking photos
+    var photoCount by remember { mutableIntStateOf(0) }
+    LaunchedEffect(photoCount) {
+        lastPhotoThumbnail = loadLastPhotoThumbnail(context)
+    }
+
     // Shutter animation
     var shutterPressed by remember { mutableStateOf(false) }
     val shutterScale by animateFloatAsState(
@@ -115,9 +140,19 @@ fun CameraScreen(
         animationSpec = tween(300),
         label = "flipRotation"
     )
+    
+    // UI adaptation rotation
+    val uiRotation by animateFloatAsState(
+        targetValue = when (sensorData.deviceOrientation) {
+            DeviceOrientation.LANDSCAPE -> if ((sensorData.gravityX ?: 0f) > 0) 90f else -90f
+            else -> 0f
+        },
+        animationSpec = tween(300),
+        label = "uiRotation"
+    )
 
     val takePhoto: () -> Unit = {
-        if (countdown == 0) {
+        if (countdown == 0 && !isProcessing) {
             coroutineScope.launch {
                 shutterPressed = true
                 sound.play(MediaActionSound.SHUTTER_CLICK)
@@ -129,6 +164,17 @@ fun CameraScreen(
             
             val capture = imageCapture
             if (capture != null) {
+                // Set target rotation based on our custom orientation
+                val rotation = when (sensorData.deviceOrientation) {
+                    DeviceOrientation.PORTRAIT -> Surface.ROTATION_0
+                    DeviceOrientation.LANDSCAPE -> {
+                        if ((sensorData.gravityX ?: 0f) > 0) Surface.ROTATION_90 else Surface.ROTATION_270
+                    }
+                    DeviceOrientation.FLAT -> Surface.ROTATION_0
+                }
+                capture.targetRotation = rotation
+
+                isProcessing = true
                 val cacheFile = File(context.cacheDir, "temp_capture_${System.currentTimeMillis()}.jpg")
                 val outputOptions = ImageCapture.OutputFileOptions.Builder(cacheFile).build()
                 capture.takePicture(
@@ -136,43 +182,53 @@ fun CameraScreen(
                     ContextCompat.getMainExecutor(context),
                     object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                            // Run watermark processing in a background coroutine
+                            // so it doesn't block the UI or countdown timer
                             coroutineScope.launch {
-                                val enabled = settingsRepository.enableWatermarkFlow.first()
-                                val showLoc = settingsRepository.showLocationFlow.first()
-                                val showAlt = settingsRepository.showAltitudeFlow.first()
-                                val showPres = settingsRepository.showPressureFlow.first()
-                                val showDir = settingsRepository.showDirectionFlow.first()
-                                val showDev = settingsRepository.showDeviceInfoFlow.first()
-                                val showCam = settingsRepository.showCameraInfoFlow.first()
-                                val pos = settingsRepository.watermarkPositionFlow.first()
-                                val col = settingsRepository.watermarkColorFlow.first()
-                                val currentFilter = settingsRepository.filterModeFlow.first()
-                                
-                                val config = WatermarkEngine.WatermarkConfig(
-                                    enabled = enabled,
-                                    showLocation = showLoc,
-                                    showAltitude = showAlt,
-                                    showPressure = showPres,
-                                    showDirection = showDir,
-                                    showDeviceInfo = showDev,
-                                    showCameraInfo = showCam,
-                                    position = pos,
-                                    colorMode = col
-                                )
-                                
-                                val uri = output.savedUri ?: Uri.fromFile(cacheFile)
-                                watermarkEngine.processAndSaveImage(
-                                    uri,
-                                    0,
-                                    config,
-                                    sensorReader.sensorData.value,
-                                    locationTracker.locationData.value,
-                                    currentFilter
-                                )
+                                try {
+                                    val enabled = settingsRepository.enableWatermarkFlow.first()
+                                    val showLoc = settingsRepository.showLocationFlow.first()
+                                    val showAlt = settingsRepository.showAltitudeFlow.first()
+                                    val showPres = settingsRepository.showPressureFlow.first()
+                                    val showDir = settingsRepository.showDirectionFlow.first()
+                                    val showDev = settingsRepository.showDeviceInfoFlow.first()
+                                    val showCam = settingsRepository.showCameraInfoFlow.first()
+                                    val pos = settingsRepository.watermarkPositionFlow.first()
+                                    val col = settingsRepository.watermarkColorFlow.first()
+                                    val currentFilter = settingsRepository.filterModeFlow.first()
+                                    val authorName = settingsRepository.authorNameFlow.first()
+                                    
+                                    val config = WatermarkEngine.WatermarkConfig(
+                                        enabled = enabled,
+                                        showLocation = showLoc,
+                                        showAltitude = showAlt,
+                                        showPressure = showPres,
+                                        showDirection = showDir,
+                                        showDeviceInfo = showDev,
+                                        showCameraInfo = showCam,
+                                        position = pos,
+                                        colorMode = col,
+                                        authorName = authorName
+                                    )
+                                    
+                                    val uri = output.savedUri ?: Uri.fromFile(cacheFile)
+                                    watermarkEngine.processAndSaveImage(
+                                        uri,
+                                        config,
+                                        sensorReader.sensorData.value,
+                                        locationTracker.locationData.value,
+                                        currentFilter
+                                    )
+                                    // Trigger thumbnail reload
+                                    photoCount++
+                                } finally {
+                                    isProcessing = false
+                                }
                             }
                         }
                         override fun onError(exc: ImageCaptureException) {
                             Log.e("CameraScreen", "Capture failed", exc)
+                            isProcessing = false
                         }
                     }
                 )
@@ -182,7 +238,7 @@ fun CameraScreen(
     
     // Shake to capture logic
     LaunchedEffect(shakeEvent) {
-        if (shakeEvent > 0L && shakeToCapture && countdown == 0) {
+        if (shakeEvent > 0L && shakeToCapture && countdown == 0 && !isProcessing) {
             for (i in 3 downTo 1) {
                 countdown = i
                 delay(1000)
@@ -213,6 +269,9 @@ fun CameraScreen(
                     val step = info.exposureState.exposureCompensationStep.toFloat()
                     exposureStep = step
                     exposureRange = (evRange.lower * step)..(evRange.upper * step)
+                    
+                    // Build dynamic zoom presets from device camera capabilities
+                    zoomPresets = buildDynamicPresets(context, info, lensFacing, minZoomRatio, maxZoomRatio)
                 },
                 onTapToFocus = { offset, previewView ->
                     focusPoint = offset
@@ -221,11 +280,36 @@ fun CameraScreen(
                     val factory = previewView.meteringPointFactory
                     val point = factory.createPoint(offset.x, offset.y)
                     val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
-                        .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                        .setAutoCancelDuration(5, TimeUnit.SECONDS)
                         .build()
                     cameraControl?.startFocusAndMetering(action)
+                },
+                onScaleZoom = { scaleFactor ->
+                    val newZoom = (zoomRatio * scaleFactor).coerceIn(minZoomRatio, maxZoomRatio)
+                    val rounded = (newZoom * 10).roundToInt() / 10f
+                    zoomRatio = rounded.coerceIn(minZoomRatio, maxZoomRatio)
+                    cameraControl?.setZoomRatio(zoomRatio)
                 }
             )
+        }
+
+        // 1.5 Filter preview overlay
+        if (filterMode > 0) {
+            val composeColorMatrix = remember(filterMode) {
+                val androidMatrix = FilterEngine.getColorMatrix(filterMode)
+                if (androidMatrix != null) {
+                    ColorMatrix(androidMatrix.array)
+                } else null
+            }
+            if (composeColorMatrix != null) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawRect(
+                        color = Color.White,
+                        colorFilter = ColorFilter.colorMatrix(composeColorMatrix),
+                        blendMode = BlendMode.Color
+                    )
+                }
+            }
         }
 
         // 2. Aspect ratio overlay mask
@@ -240,26 +324,27 @@ fun CameraScreen(
         
         // 4. Horizon leveler
         if (horizonLeveler) {
-            HorizonLevelerOverlay(
-                pitch = sensorData.pitch ?: 0f,
-                roll = sensorData.roll ?: 0f
-            )
+            Box(modifier = Modifier.fillMaxSize()) { // Do not rotate the leveler wrapper, it handles its own angle internally
+                HorizonLevelerOverlay(sensorData = sensorData, uiRotation = uiRotation)
+            }
         }
         
         // 5. Focus + Exposure overlay
-        FocusExposureOverlay(
-            focusPoint = focusPoint,
-            exposureCompensation = exposureCompensation,
-            exposureRange = exposureRange,
-            onExposureChange = { newEv ->
-                exposureCompensation = newEv
-                if (exposureStep > 0) {
-                    val index = (newEv / exposureStep).roundToInt()
-                    cameraControl?.setExposureCompensationIndex(index)
-                }
-            },
-            onDismiss = { focusPoint = null }
-        )
+        Box(modifier = Modifier.fillMaxSize().graphicsLayer(rotationZ = uiRotation)) {
+            FocusExposureOverlay(
+                focusPoint = focusPoint,
+                exposureCompensation = exposureCompensation,
+                exposureRange = exposureRange,
+                onExposureChange = { newEv ->
+                    exposureCompensation = newEv
+                    if (exposureStep > 0) {
+                        val index = (newEv / exposureStep).roundToInt()
+                        cameraControl?.setExposureCompensationIndex(index)
+                    }
+                },
+                onDismiss = { focusPoint = null }
+            )
+        }
 
         // 6. Flash screen
         AnimatedVisibility(
@@ -284,7 +369,8 @@ fun CameraScreen(
                     "$countdown",
                     fontSize = 96.sp,
                     fontWeight = FontWeight.Thin,
-                    color = Color.White
+                    color = Color.White,
+                    modifier = Modifier.graphicsLayer(rotationZ = uiRotation)
                 )
             }
         }
@@ -300,7 +386,8 @@ fun CameraScreen(
         ) {
             // Filter button (top left)
             IconButton(
-                onClick = { showFilterPanel = !showFilterPanel }
+                onClick = { showFilterPanel = !showFilterPanel },
+                modifier = Modifier.graphicsLayer(rotationZ = uiRotation)
             ) {
                 Icon(
                     Icons.Filled.AutoAwesome,
@@ -310,7 +397,10 @@ fun CameraScreen(
             }
 
             // Settings button (top right)
-            IconButton(onClick = onNavigateToSettings) {
+            IconButton(
+                onClick = onNavigateToSettings,
+                modifier = Modifier.graphicsLayer(rotationZ = uiRotation)
+            ) {
                 Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings), tint = Color.White)
             }
         }
@@ -346,15 +436,18 @@ fun CameraScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Zoom controls
-            ZoomDialControl(
-                currentZoom = zoomRatio,
-                minZoom = minZoomRatio,
-                maxZoom = maxZoomRatio,
-                onZoomChange = { newZoom ->
-                    zoomRatio = newZoom
-                    cameraControl?.setZoomRatio(newZoom)
-                }
-            )
+            Box(modifier = Modifier.graphicsLayer(rotationZ = uiRotation)) {
+                ZoomDialControl(
+                    currentZoom = zoomRatio,
+                    minZoom = minZoomRatio,
+                    maxZoom = maxZoomRatio,
+                    presets = zoomPresets,
+                    onZoomChange = { newZoom ->
+                        zoomRatio = newZoom
+                        cameraControl?.setZoomRatio(newZoom)
+                    }
+                )
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -373,21 +466,24 @@ fun CameraScreen(
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color.White.copy(alpha = 0.2f))
                         .border(1.5.dp, Color.White.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                        .clickable {
-                            val viewIntent = Intent(
-                                Intent.ACTION_VIEW,
-                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                            )
-                            context.startActivity(viewIntent)
-                        },
+                        .clickable { onNavigateToGallery() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Filled.PhotoLibrary,
-                        contentDescription = stringResource(R.string.photo_gallery),
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    if (lastPhotoThumbnail != null) {
+                        Image(
+                            bitmap = lastPhotoThumbnail!!.asImageBitmap(),
+                            contentDescription = stringResource(R.string.photo_gallery),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
+                        )
+                    } else {
+                        Icon(
+                            Icons.Filled.PhotoLibrary,
+                            contentDescription = stringResource(R.string.photo_gallery),
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp).graphicsLayer(rotationZ = uiRotation)
+                        )
+                    }
                 }
 
                 // Shutter button
@@ -419,6 +515,8 @@ fun CameraScreen(
                             flipTrigger++
                             lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
                                 CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+                            // Reset zoom when switching cameras
+                            zoomRatio = 1f
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -426,7 +524,7 @@ fun CameraScreen(
                         Icons.Filled.Cameraswitch,
                         contentDescription = stringResource(R.string.switch_lens),
                         tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp).graphicsLayer(rotationZ = uiRotation + flipRotation)
                     )
                 }
             }
@@ -441,7 +539,8 @@ private fun CameraPreviewView(
     lensFacing: Int,
     filterMode: Int,
     onCameraReady: (CameraControl, CameraInfo, ImageCapture) -> Unit,
-    onTapToFocus: (Offset, PreviewView) -> Unit
+    onTapToFocus: (Offset, PreviewView) -> Unit,
+    onScaleZoom: (Float) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -478,16 +577,33 @@ private fun CameraPreviewView(
                     )
                     onCameraReady(camera.cameraControl, camera.cameraInfo, imageCapture)
                     
-                    // Tap to focus using standard touch listener
-                    previewView.setOnTouchListener { view, event ->
-                        when (event.action) {
-                            MotionEvent.ACTION_DOWN -> {
-                                onTapToFocus(Offset(event.x, event.y), previewView)
-                                view.performClick()
-                                true
+                    // Set up gesture detectors for tap-to-focus and pinch-to-zoom
+                    val scaleGestureDetector = ScaleGestureDetector(ctx,
+                        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                                onScaleZoom(detector.scaleFactor)
+                                return true
                             }
-                            else -> false
                         }
+                    )
+                    
+                    val gestureDetector = GestureDetector(ctx,
+                        object : GestureDetector.SimpleOnGestureListener() {
+                            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                                onTapToFocus(Offset(e.x, e.y), previewView)
+                                return true
+                            }
+                        }
+                    )
+                    
+                    previewView.setOnTouchListener { view, event ->
+                        var handled = scaleGestureDetector.onTouchEvent(event)
+                        // Only forward to gesture detector if scale detector isn't handling it
+                        if (!scaleGestureDetector.isInProgress) {
+                            handled = gestureDetector.onTouchEvent(event) || handled
+                        }
+                        view.performClick()
+                        true
                     }
                 } catch (e: Exception) {
                     Log.e("CameraPreview", "Binding failed", e)
@@ -498,6 +614,138 @@ private fun CameraPreviewView(
         },
         modifier = Modifier.fillMaxSize()
     )
+}
+
+/**
+ * Build dynamic zoom presets based on actual device camera capabilities.
+ * For back camera: detect ultra-wide, main, and telephoto lenses.
+ * For front camera: typically only 1x.
+ */
+@androidx.annotation.OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
+private fun buildDynamicPresets(
+    context: Context,
+    cameraInfo: CameraInfo,
+    lensFacing: Int,
+    minZoom: Float,
+    maxZoom: Float
+): List<Float> {
+    if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
+        return listOf(1f)
+    }
+    
+    val presets = mutableListOf<Float>()
+    
+    try {
+        val camera2Info = Camera2CameraInfo.from(cameraInfo)
+        val manager = context.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+        val cameraId = camera2Info.cameraId
+        val characteristics = manager.getCameraCharacteristics(cameraId)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val physicalIds = characteristics.physicalCameraIds
+            
+            if (physicalIds.isNotEmpty()) {
+                val focalLengths = mutableListOf<Float>()
+                for (id in physicalIds) {
+                    val physChar = manager.getCameraCharacteristics(id)
+                    val arr = physChar.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                    if (arr != null && arr.isNotEmpty()) {
+                        focalLengths.add(arr[0])
+                    }
+                }
+                focalLengths.sort()
+                
+                if (focalLengths.isNotEmpty()) {
+                    // Main lens is typically 4mm-7mm. If not found, guess the middle or second one.
+                    val mainFocalLength = focalLengths.firstOrNull { it > 3.0f && it < 7.0f } 
+                        ?: (if (minZoom < 0.9f && focalLengths.size > 1) focalLengths[1] else focalLengths[0])
+                        
+                    focalLengths.forEach { f ->
+                        val ratio = f / mainFocalLength
+                        val roundedRatio = when {
+                            ratio < 0.8f -> (ratio * 10).roundToInt() / 10f // e.g., 0.5 or 0.6
+                            ratio in 0.8f..1.2f -> 1.0f
+                            else -> ratio.roundToInt().toFloat() // Telephoto: round to nearest integer (2x, 3x, 5x)
+                        }
+                        presets.add(roundedRatio.coerceIn(minZoom, maxZoom))
+                    }
+                }
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    
+    // Fallback if Camera2 failed or returned no focal lengths
+    if (presets.isEmpty()) {
+        if (minZoom < 0.9f) {
+            val ultraWideZoom = (minZoom * 10).roundToInt() / 10f
+            presets.add(ultraWideZoom.coerceAtLeast(0.5f))
+        }
+        presets.add(1f)
+        if (maxZoom >= 2f) {
+            when {
+                maxZoom >= 5f -> {
+                    presets.add(2f)
+                    presets.add(5f)
+                }
+                maxZoom >= 3f -> presets.add(3f)
+                maxZoom >= 2f -> presets.add(2f)
+            }
+        }
+    }
+    
+    return presets.distinct().sorted().filter { it in minZoom..maxZoom }.ifEmpty { listOf(1f) }
+}
+
+/**
+ * Load the thumbnail of the last photo taken by this app.
+ */
+private fun loadLastPhotoThumbnail(context: Context): android.graphics.Bitmap? {
+    return try {
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DATE_ADDED
+        )
+        
+        val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
+        } else {
+            "${MediaStore.Images.Media.DATA} LIKE ?"
+        }
+        val selectionArgs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf("Pictures/UtopiaCamera%")
+        } else {
+            arrayOf("%/UtopiaCamera/%")
+        }
+        
+        val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+        
+        context.contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            sortOrder
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                val id = cursor.getLong(idColumn)
+                val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                
+                // Load a small thumbnail
+                context.contentResolver.openInputStream(contentUri)?.use { inputStream ->
+                    val options = BitmapFactory.Options().apply {
+                        inSampleSize = 8 // Load a small version
+                    }
+                    BitmapFactory.decodeStream(inputStream, null, options)
+                }
+            } else null
+        }
+    } catch (e: Exception) {
+        Log.e("CameraScreen", "Failed to load thumbnail", e)
+        null
+    }
 }
 
 // ───────── Filter Panel ─────────

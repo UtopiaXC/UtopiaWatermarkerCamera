@@ -1,6 +1,7 @@
 package com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui
 
-import androidx.compose.foundation.background
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -9,8 +10,10 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.R
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.data.SettingsRepository
@@ -18,6 +21,7 @@ import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.compon
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.components.SettingsNavigationItem
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.components.SettingsSelectionDialog
 import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.components.SettingsSwitchItem
+import com.utopiaxc.tsukuba.embedded.development.utopiawatermarkcamera.ui.components.SettingsTextInputItem
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +30,7 @@ fun SettingsScreen(
     settingsRepository: SettingsRepository,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     
     // Watermark settings
@@ -36,8 +41,8 @@ fun SettingsScreen(
     val showDirection by settingsRepository.showDirectionFlow.collectAsState(initial = true)
     val showDeviceInfo by settingsRepository.showDeviceInfoFlow.collectAsState(initial = true)
     val showCameraInfo by settingsRepository.showCameraInfoFlow.collectAsState(initial = true)
-    val watermarkPosition by settingsRepository.watermarkPositionFlow.collectAsState(initial = 0)
     val watermarkColor by settingsRepository.watermarkColorFlow.collectAsState(initial = 0)
+    val authorName by settingsRepository.authorNameFlow.collectAsState(initial = "")
     
     // Camera settings
     val photoRatio by settingsRepository.photoRatioFlow.collectAsState(initial = 0)
@@ -50,10 +55,19 @@ fun SettingsScreen(
     var showRatioDialog by remember { mutableStateOf(false) }
     var showResolutionDialog by remember { mutableStateOf(false) }
     var showGridDialog by remember { mutableStateOf(false) }
-    var showPositionDialog by remember { mutableStateOf(false) }
     var showColorDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    val appLanguage by settingsRepository.appLanguageFlow.collectAsState(initial = 0)
 
     // Localized option lists
+    val languageOptions = listOf(
+        stringResource(R.string.lang_system),
+        stringResource(R.string.lang_zh_cn),
+        stringResource(R.string.lang_zh_tw),
+        stringResource(R.string.lang_en),
+        stringResource(R.string.lang_ja)
+    )
     val ratioOptions = listOf(
         stringResource(R.string.ratio_4_3),
         stringResource(R.string.ratio_16_9),
@@ -70,12 +84,6 @@ fun SettingsScreen(
         stringResource(R.string.grid_thirds),
         stringResource(R.string.grid_golden)
     )
-    val positionOptions = listOf(
-        stringResource(R.string.position_bottom),
-        stringResource(R.string.position_top),
-        stringResource(R.string.position_left),
-        stringResource(R.string.position_right)
-    )
     val colorOptions = listOf(
         stringResource(R.string.color_light),
         stringResource(R.string.color_dark)
@@ -91,7 +99,7 @@ fun SettingsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
@@ -104,34 +112,50 @@ fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             // ══════════════════════════════════════
+            // General Settings Group
+            // ══════════════════════════════════════
+            item {
+                SettingsGroup(title = "General") {
+                    SettingsNavigationItem(
+                        icon = Icons.Filled.Language,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        title = stringResource(R.string.app_language),
+                        currentValue = languageOptions.getOrNull(appLanguage) ?: languageOptions[0],
+                        onClick = { showLanguageDialog = true },
+                        showDivider = false
+                    )
+                }
+            }
+
+            // ══════════════════════════════════════
             // Camera Settings Group
             // ══════════════════════════════════════
             item {
                 SettingsGroup(title = stringResource(R.string.camera_settings)) {
                     SettingsNavigationItem(
                         icon = Icons.Filled.AspectRatio,
-                        iconTint = Color(0xFF5C6BC0),
+                        iconTint = MaterialTheme.colorScheme.primary,
                         title = stringResource(R.string.photo_ratio),
                         currentValue = ratioOptions[photoRatio],
                         onClick = { showRatioDialog = true }
                     )
                     SettingsNavigationItem(
                         icon = Icons.Filled.HighQuality,
-                        iconTint = Color(0xFF26A69A),
+                        iconTint = MaterialTheme.colorScheme.tertiary,
                         title = stringResource(R.string.photo_resolution),
                         currentValue = resolutionOptions[photoResolution],
                         onClick = { showResolutionDialog = true }
                     )
                     SettingsNavigationItem(
                         icon = Icons.Filled.Grid4x4,
-                        iconTint = Color(0xFF78909C),
+                        iconTint = MaterialTheme.colorScheme.secondary,
                         title = stringResource(R.string.grid_lines),
                         currentValue = gridOptions[gridMode],
                         onClick = { showGridDialog = true }
                     )
                     SettingsSwitchItem(
                         icon = Icons.Filled.Straighten,
-                        iconTint = Color(0xFF8D6E63),
+                        iconTint = MaterialTheme.colorScheme.tertiary,
                         title = stringResource(R.string.horizon_leveler),
                         checked = horizonLeveler,
                         onCheckedChange = {
@@ -142,7 +166,7 @@ fun SettingsScreen(
                     )
                     SettingsSwitchItem(
                         icon = Icons.Filled.Vibration,
-                        iconTint = Color(0xFFEF5350),
+                        iconTint = MaterialTheme.colorScheme.error,
                         title = stringResource(R.string.shake_to_capture),
                         checked = shakeToCapture,
                         onCheckedChange = {
@@ -162,7 +186,7 @@ fun SettingsScreen(
                 SettingsGroup(title = stringResource(R.string.watermark_settings)) {
                     SettingsSwitchItem(
                         icon = Icons.AutoMirrored.Filled.BrandingWatermark,
-                        iconTint = Color(0xFF42A5F5),
+                        iconTint = MaterialTheme.colorScheme.primary,
                         title = stringResource(R.string.enable_watermark),
                         checked = enableWatermark,
                         onCheckedChange = {
@@ -176,7 +200,7 @@ fun SettingsScreen(
                     if (enableWatermark) {
                         SettingsSwitchItem(
                             icon = Icons.Filled.LocationOn,
-                            iconTint = Color(0xFF66BB6A),
+                            iconTint = MaterialTheme.colorScheme.tertiary,
                             title = stringResource(R.string.show_location),
                             subtitle = stringResource(R.string.show_location_desc),
                             checked = showLocation,
@@ -188,7 +212,7 @@ fun SettingsScreen(
                         )
                         SettingsSwitchItem(
                             icon = Icons.Filled.Terrain,
-                            iconTint = Color(0xFF8D6E63),
+                            iconTint = MaterialTheme.colorScheme.secondary,
                             title = stringResource(R.string.show_altitude),
                             subtitle = stringResource(R.string.show_altitude_desc),
                             checked = showAltitude,
@@ -200,7 +224,7 @@ fun SettingsScreen(
                         )
                         SettingsSwitchItem(
                             icon = Icons.Filled.Speed,
-                            iconTint = Color(0xFF7E57C2),
+                            iconTint = MaterialTheme.colorScheme.tertiary,
                             title = stringResource(R.string.show_pressure),
                             subtitle = stringResource(R.string.show_pressure_desc),
                             checked = showPressure,
@@ -212,7 +236,7 @@ fun SettingsScreen(
                         )
                         SettingsSwitchItem(
                             icon = Icons.Filled.Explore,
-                            iconTint = Color(0xFFFF7043),
+                            iconTint = MaterialTheme.colorScheme.primary,
                             title = stringResource(R.string.show_direction),
                             subtitle = stringResource(R.string.show_direction_desc),
                             checked = showDirection,
@@ -224,7 +248,7 @@ fun SettingsScreen(
                         )
                         SettingsSwitchItem(
                             icon = Icons.Filled.PhoneAndroid,
-                            iconTint = Color(0xFF26C6DA),
+                            iconTint = MaterialTheme.colorScheme.secondary,
                             title = stringResource(R.string.show_device_info),
                             subtitle = stringResource(R.string.show_device_info_desc),
                             checked = showDeviceInfo,
@@ -236,7 +260,7 @@ fun SettingsScreen(
                         )
                         SettingsSwitchItem(
                             icon = Icons.Filled.CameraAlt,
-                            iconTint = Color(0xFFAB47BC),
+                            iconTint = MaterialTheme.colorScheme.tertiary,
                             title = stringResource(R.string.show_camera_info),
                             subtitle = stringResource(R.string.show_camera_info_desc),
                             checked = showCameraInfo,
@@ -247,18 +271,24 @@ fun SettingsScreen(
                             }
                         )
                         SettingsNavigationItem(
-                            icon = Icons.Filled.VerticalAlignBottom,
-                            iconTint = Color(0xFF5C6BC0),
-                            title = stringResource(R.string.watermark_position),
-                            currentValue = positionOptions[watermarkPosition],
-                            onClick = { showPositionDialog = true }
-                        )
-                        SettingsNavigationItem(
                             icon = Icons.Filled.Palette,
-                            iconTint = Color(0xFF78909C),
+                            iconTint = MaterialTheme.colorScheme.primary,
                             title = stringResource(R.string.watermark_color),
                             currentValue = colorOptions[watermarkColor],
-                            onClick = { showColorDialog = true },
+                            onClick = { showColorDialog = true }
+                        )
+                        SettingsTextInputItem(
+                            icon = Icons.Filled.Person,
+                            iconTint = MaterialTheme.colorScheme.secondary,
+                            title = stringResource(R.string.author_name),
+                            subtitle = stringResource(R.string.author_name_desc),
+                            currentValue = authorName,
+                            placeholder = stringResource(R.string.author_name_hint),
+                            onValueChange = {
+                                coroutineScope.launch {
+                                    settingsRepository.updateStringSetting(SettingsRepository.AUTHOR_NAME, it)
+                                }
+                            },
                             showDivider = false
                         )
                     }
@@ -272,10 +302,10 @@ fun SettingsScreen(
                 SettingsGroup(title = stringResource(R.string.about)) {
                     SettingsNavigationItem(
                         icon = Icons.Filled.Info,
-                        iconTint = Color(0xFF78909C),
+                        iconTint = MaterialTheme.colorScheme.secondary,
                         title = stringResource(R.string.version),
                         currentValue = "1.0",
-                        onClick = { },
+                        onClick = { showAboutDialog = true },
                         showDivider = false
                     )
                 }
@@ -326,27 +356,96 @@ fun SettingsScreen(
         )
     }
 
-    if (showPositionDialog) {
-        SettingsSelectionDialog(
-            title = stringResource(R.string.watermark_position),
-            options = positionOptions,
-            selectedIndex = watermarkPosition,
-            onSelect = {
-                coroutineScope.launch { settingsRepository.updateIntSetting(SettingsRepository.WATERMARK_POSITION, it) }
-            },
-            onDismiss = { showPositionDialog = false }
-        )
-    }
-
     if (showColorDialog) {
         SettingsSelectionDialog(
             title = stringResource(R.string.watermark_color),
             options = colorOptions,
             selectedIndex = watermarkColor,
             onSelect = {
-                coroutineScope.launch { settingsRepository.updateIntSetting(SettingsRepository.WATERMARK_COLOR, it) }
+                coroutineScope.launch {
+                    settingsRepository.updateIntSetting(SettingsRepository.WATERMARK_COLOR, it)
+                }
+                showColorDialog = false
             },
             onDismiss = { showColorDialog = false }
+        )
+    }
+
+    if (showLanguageDialog) {
+        SettingsSelectionDialog(
+            title = stringResource(R.string.app_language),
+            options = languageOptions,
+            selectedIndex = appLanguage,
+            onSelect = {
+                coroutineScope.launch {
+                    settingsRepository.updateIntSetting(SettingsRepository.APP_LANGUAGE, it)
+                }
+                showLanguageDialog = false
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
+
+    // About dialog
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.about_dialog_title),
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "v1.0",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    HorizontalDivider()
+                    Text(
+                        text = stringResource(R.string.about_developer),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = stringResource(R.string.about_course),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    HorizontalDivider()
+                    TextButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/UtopiaXC/UtopiaWatermarkerCamera"))
+                            context.startActivity(intent)
+                        },
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Code,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.about_github),
+                            textDecoration = TextDecoration.Underline
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutDialog = false }) {
+                    Text("OK")
+                }
+            }
         )
     }
 }

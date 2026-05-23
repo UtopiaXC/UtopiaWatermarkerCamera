@@ -8,14 +8,25 @@ import android.hardware.SensorManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.abs
 import kotlin.math.sqrt
+
+enum class DeviceOrientation {
+    PORTRAIT,
+    LANDSCAPE,
+    FLAT
+}
 
 data class SensorData(
     val altitude: Float? = null,
     val pressure: Float? = null,  // Raw pressure in hPa
     val azimuth: Float? = null,   // 0-360 degrees
     val pitch: Float? = null,
-    val roll: Float? = null
+    val roll: Float? = null,
+    val gravityX: Float? = null,
+    val gravityY: Float? = null,
+    val gravityZ: Float? = null,
+    val deviceOrientation: DeviceOrientation = DeviceOrientation.PORTRAIT
 )
 
 class SensorReader(context: Context) : SensorEventListener {
@@ -37,10 +48,16 @@ class SensorReader(context: Context) : SensorEventListener {
     private var hasGravity = false
     private var hasMagnetic = false
     
-    // Shake detection parameters
-    private var acceleration = 10f
-    private var currentAcceleration = SensorManager.GRAVITY_EARTH
-    private var lastAcceleration = SensorManager.GRAVITY_EARTH
+    // 4-swing shake detection state
+    // We track directional reversals on X-axis (left-right)
+    // Need 4 reversals (left→right→left→right) within a time window
+    private var lastSignificantX = 0f
+    private var lastDirection = 0 // -1 = left, 1 = right, 0 = unknown
+    private var swingCount = 0
+    private var firstSwingTime = 0L
+    private val SWING_THRESHOLD = 6f       // Minimum acceleration to count as significant movement
+    private val SWING_TIME_WINDOW = 2500L  // Must complete 4 swings within 2.5 seconds
+    private val SHAKE_COOLDOWN = 3000L     // Cooldown after a successful shake event
 
     fun start() {
         pressureSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
@@ -68,25 +85,32 @@ class SensorReader(context: Context) : SensorEventListener {
                 System.arraycopy(event.values, 0, gravityValues, 0, event.values.size)
                 hasGravity = true
                 
-                // Backup shake detection using basic accelerometer if linear acc is missing
-                detectShakeWithAccelerometer(event.values[0], event.values[1], event.values[2])
+                val gx = event.values[0]
+                val gy = event.values[1]
+                val gz = event.values[2]
+                
+                val newOrientation = detectOrientation(gx, gy, gz, currentData.deviceOrientation)
+                currentData = currentData.copy(
+                    gravityX = gx,
+                    gravityY = gy,
+                    gravityZ = gz,
+                    deviceOrientation = newOrientation
+                )
+                
+                // Fallback shake detection using accelerometer if linear acc is missing
+                if (linearAcceleration == null) {
+                    // Subtract gravity approximation for shake detection
+                    detectSwingPattern(gx)
+                }
             }
             Sensor.TYPE_MAGNETIC_FIELD -> {
                 System.arraycopy(event.values, 0, magneticValues, 0, event.values.size)
                 hasMagnetic = true
             }
             Sensor.TYPE_LINEAR_ACCELERATION -> {
-                // Precise shake detection
+                // Use X-axis for left-right swing detection
                 val x = event.values[0]
-                val y = event.values[1]
-                val z = event.values[2]
-                val magnitude = sqrt((x*x + y*y + z*z).toDouble()).toFloat()
-                if (magnitude > 12f) { // Shake threshold
-                    val now = System.currentTimeMillis()
-                    if (now - _shakeEvent.value > 2000) { // Cooldown
-                        _shakeEvent.value = now
-                    }
-                }
+                detectSwingPattern(x)
             }
         }
 
@@ -108,16 +132,72 @@ class SensorReader(context: Context) : SensorEventListener {
         _sensorData.value = currentData
     }
 
-    private fun detectShakeWithAccelerometer(x: Float, y: Float, z: Float) {
-        if (linearAcceleration != null) return // Use linear if available
-        lastAcceleration = currentAcceleration
-        currentAcceleration = sqrt((x*x + y*y + z*z).toDouble()).toFloat()
-        val delta = currentAcceleration - lastAcceleration
-        acceleration = acceleration * 0.9f + delta
-        if (acceleration > 12) {
-            val now = System.currentTimeMillis()
-            if (now - _shakeEvent.value > 2000) {
-                _shakeEvent.value = now
+    /**
+     * Detect a 4-swing pattern: the phone must reverse direction 4 times
+     * (e.g., left→right→left→right) within a time window.
+     * This prevents accidental single-movement triggers.
+     */
+    private fun detectSwingPattern(xAcceleration: Float) {
+        val now = System.currentTimeMillis()
+        
+        // Check cooldown
+        if (now - _shakeEvent.value < SHAKE_COOLDOWN) return
+        
+        // Only consider significant movements
+        if (abs(xAcceleration) < SWING_THRESHOLD) return
+        
+        val currentDirection = if (xAcceleration > 0) 1 else -1
+        
+        // Detect direction reversal
+        if (lastDirection != 0 && currentDirection != lastDirection) {
+            if (swingCount == 0) {
+                firstSwingTime = now
+            }
+            
+            // Check if we're still within the time window
+            if (now - firstSwingTime < SWING_TIME_WINDOW) {
+                swingCount++
+                
+                if (swingCount >= 4) {
+                    // 4 swings detected! Trigger shake event
+                    _shakeEvent.value = now
+                    swingCount = 0
+                    lastDirection = 0
+                    return
+                }
+            } else {
+                // Time window expired, start over with this as the first swing
+                swingCount = 1
+                firstSwingTime = now
+            }
+        }
+        
+        lastDirection = currentDirection
+    }
+
+    private fun detectOrientation(gx: Float, gy: Float, gz: Float, current: DeviceOrientation): DeviceOrientation {
+        val ax = abs(gx)
+        val ay = abs(gy)
+        val az = abs(gz)
+        
+        // Hysteresis threshold: requires the new dominant axis to exceed the current dominant axis by 1.5 m/s^2
+        val threshold = 1.5f
+
+        return when (current) {
+            DeviceOrientation.PORTRAIT -> {
+                if (ax > ay + threshold && ax > az) DeviceOrientation.LANDSCAPE
+                else if (az > ay + threshold && az > ax) DeviceOrientation.FLAT
+                else DeviceOrientation.PORTRAIT
+            }
+            DeviceOrientation.LANDSCAPE -> {
+                if (ay > ax + threshold && ay > az) DeviceOrientation.PORTRAIT
+                else if (az > ax + threshold && az > ay) DeviceOrientation.FLAT
+                else DeviceOrientation.LANDSCAPE
+            }
+            DeviceOrientation.FLAT -> {
+                if (ay > az + threshold && ay > ax) DeviceOrientation.PORTRAIT
+                else if (ax > az + threshold && ax > ay) DeviceOrientation.LANDSCAPE
+                else DeviceOrientation.FLAT
             }
         }
     }

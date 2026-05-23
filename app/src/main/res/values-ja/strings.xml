@@ -59,8 +59,54 @@
     <string name="watermark_color">ウォーターマークのテーマ</string>
     <string name="color_light">ライト</string>
     <string name="color_dark">ダーク</string>
+    <string name="author_name">撮影者名</string>
+    <string name="author_name_hint">お名前を入力</string>
+    <string name="author_name_desc">ウォーターマークに「Shot by ©名前」と表示されます</string>
 
     <!-- About -->
     <string name="about">について</string>
     <string name="version">バージョン</string>
+    <string name="about_developer">UtopiaXCが開発</string>
+    <string name="about_course">筑波大学組込みプログラム開発Android課題</string>
+    <string name="about_github">GitHubで見る</string>
+    <string name="about_dialog_title">このアプリについて</string>
+
+    <!-- Gallery -->
+    <string name="gallery_title">写真</string>
+    <string name="gallery_empty">写真はまだありません</string>
+    <string name="gallery_empty_desc">Utopia ウォーターマークカメラで撮影した写真がここに表示されます</string>
+    <string name="delete_photo">削除</string>
+    <string name="delete_photo_confirm">この写真を削除しますか？</string>
+    <string name="delete_photo_confirm_title">写真を削除</string>
+    <string name="cancel">キャンセル</string>
+    <string name="confirm">確認</string>
+    <string name="photo_deleted">写真を削除しました</string>
+    <string name="photo_count">%d枚の写真</string>
+
+    <!-- Watermark Labels -->
+    <string name="watermark_shot_by">Shot by ©%s</string>
+    <string name="watermark_powered_by">Powered by Utopia Watermark Camera</string>
+    <string name="watermark_alt">高度: %sm</string>
+    <string name="watermark_alt_dual">標高: %1$sm (気圧) %2$sm (GPS)</string>
+    <string name="watermark_pressure">%s hPa</string>
+    <string name="watermark_direction_n">北</string>
+    <string name="watermark_direction_ne">北東</string>
+    <string name="watermark_direction_e">東</string>
+    <string name="watermark_direction_se">南東</string>
+    <string name="watermark_direction_s">南</string>
+    <string name="watermark_direction_sw">南西</string>
+    <string name="watermark_direction_w">西</string>
+    <string name="watermark_direction_nw">北西</string>
+
+    <!-- Misc -->
+    <string name="save">保存</string>
+    <string name="not_set">未設定</string>
+
+    <!-- Batch Selection -->
+    <string name="select_all">すべて選択</string>
+    <string name="deselect_all">選択を解除</string>
+    <string name="selected_count">%d件選択</string>
+    <string name="batch_delete_confirm">%d枚の写真を削除してもよろしいですか？</string>
+    <string name="batch_delete_confirm_title">写真を削除</string>
+    <string name="photos_deleted">%d枚の写真を削除しました</string>
 </resources>
