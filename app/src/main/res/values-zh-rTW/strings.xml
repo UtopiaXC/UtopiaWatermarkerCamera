@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Utopia 相機</string>
+    <string name="app_name">Utopia Watermark Camera</string>
     <string name="permission_rationale">使用全部功能必須授予相機、位置以及檔案儲存權限，用於讀取感測器和寫入浮水印圖片，請授權以繼續。</string>
     <string name="grant_permissions">授予權限</string>
     <string name="open_settings">前往設定</string>
